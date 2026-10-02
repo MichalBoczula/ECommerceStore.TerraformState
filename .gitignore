@@ -1,0 +1,13 @@
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+backend_override.tf
+bootstrap-outputs.json
+crash.log
+crash.*.log
+__pycache__/
+backend.hcl
