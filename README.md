@@ -133,9 +133,31 @@ categories. Remove any old Azure ID variables if you previously configured them
 there. This helper adds secrets but does not delete existing variables.
 
 OIDC subject:
-`repo:MichalBoczula/ECommerceStore.Infrastructure:environment:development`.
+`repo:MichalBoczula@38834900/ECommerceStore.Infrastructure@1401844464:environment:development`.
 Issuer: `https://token.actions.githubusercontent.com`.
 Audience: `api://AzureADTokenExchange`.
+
+The subject includes GitHub's immutable owner ID and repository ID. It matches
+the subject emitted by this repository's workflow, confirmed on 2026-10-04.
+For `AADSTS700213`, compare the logged issuer, subject and audience with the
+credential before changing permissions. New GitHub repositories use the
+immutable format; the older name-only subject does not match this repository.
+Apply subject corrections from this foundation root against its existing state.
+AzureRM 5.8.0 can update the credential subject in place. In PowerShell:
+
+```powershell
+git pull --ff-only
+terraform validate
+terraform test "-test-directory=tests"
+terraform plan "-out=bootstrap.tfplan"
+# Review the plan: only the federated credential subject should change.
+terraform apply "bootstrap.tfplan"
+```
+
+Then rerun **Verify development backend**. No secret changes are required for a
+subject-only correction.
+
+Reference: [GitHub OIDC subject formats](https://docs.github.com/en/actions/reference/security/oidc).
 
 After setup, run **Verify development backend** on `main` in Infrastructure.
 It verifies OIDC, remote init, locked planning, no-change apply and state read,

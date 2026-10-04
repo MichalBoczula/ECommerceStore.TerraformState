@@ -12,7 +12,7 @@ resource "azurerm_federated_identity_credential" "development" {
   user_assigned_identity_id = azurerm_user_assigned_identity.development.id
   audience                  = ["api://AzureADTokenExchange"]
   issuer                    = "https://token.actions.githubusercontent.com"
-  subject                   = "repo:MichalBoczula/ECommerceStore.Infrastructure:environment:development"
+  subject                   = "repo:MichalBoczula@38834900/ECommerceStore.Infrastructure@1401844464:environment:development"
   lifecycle { prevent_destroy = true }
 }
 

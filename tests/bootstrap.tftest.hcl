@@ -65,8 +65,8 @@ run "scoped_access_and_storage" {
     error_message = "The external state account must remain outside both Terraform-managed groups."
   }
   assert {
-    condition     = azurerm_federated_identity_credential.development.subject == "repo:MichalBoczula/ECommerceStore.Infrastructure:environment:development"
-    error_message = "OIDC federation must match the development repo and GitHub environment."
+    condition     = azurerm_federated_identity_credential.development.subject == "repo:MichalBoczula@38834900/ECommerceStore.Infrastructure@1401844464:environment:development"
+    error_message = "OIDC federation must match the observed immutable owner/repository IDs and development environment."
   }
   assert {
     condition     = length(azurerm_role_assignment.application_role_manager) == 0
