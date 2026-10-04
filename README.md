@@ -53,6 +53,12 @@ for application service principals, excluding self-grants.
 Use Bash (for example WSL), Terraform **1.16.5**, Azure CLI and GitHub CLI.
 Credentials stay on your machine; do not send tokens, keys or state in chat.
 
+On Windows, use the same Bash environment for Azure login and the setup scripts
+(for example, WSL with its own Azure CLI installation). Shell scripts must use
+LF line endings; `.gitattributes` enforces this for new checkouts. If an existing
+checkout reports `set: pipefail: invalid option name`, convert `scripts/*.sh`
+from CRLF to LF in your editor (VS Code: click CRLF, select LF, save), then retry.
+
 ```bash
 az login
 az account list --output table
