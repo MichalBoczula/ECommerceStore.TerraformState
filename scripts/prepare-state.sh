@@ -4,8 +4,10 @@ set -euo pipefail
 umask 077
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 command -v az >/dev/null
-# Git Bash must pass Azure ARM scopes unchanged to Windows executables.
-export MSYS_NO_PATHCONV=1
+# Git Bash must preserve Azure ARM scopes, while still converting Python paths.
+az() {
+  MSYS_NO_PATHCONV=1 command az "$@"
+}
 export ECOM_STATE_SUBSCRIPTION ECOM_STATE_ACCOUNT
 ECOM_STATE_SUBSCRIPTION=${ECOM_STATE_SUBSCRIPTION:-$(az account show --query id --output tsv | tr -d '\r')}
 ECOM_STATE_SUBSCRIPTION=${ECOM_STATE_SUBSCRIPTION%$'\r'}
