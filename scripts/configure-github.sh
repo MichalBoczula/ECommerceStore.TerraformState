@@ -62,6 +62,13 @@ with open(sys.argv[2], 'w', newline='\n') as f:
         f.write(name + '\t' + value + '\n')
 PY
 while IFS=$'\t' read -r name value; do
-  gh variable set "$name" --repo "$repo" --env development --body "$value"
+  case "$name" in
+    AZURE_CLIENT_ID|AZURE_TENANT_ID|AZURE_SUBSCRIPTION_ID)
+      printf '%s' "$value" | gh secret set "$name" --repo "$repo" --env development
+      ;;
+    *)
+      gh variable set "$name" --repo "$repo" --env development --body "$value"
+      ;;
+  esac
 done <"$temp_dir/variables.tsv"
 echo 'Configured development environment. Run Verify development backend on main after its PR is merged.'

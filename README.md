@@ -12,8 +12,8 @@ will use its own root, identity, resource group and state in a later task.
   storage (the explicit exception to Terraform-managed infrastructure).
 - Terraform: persistent deployment identity, GitHub OIDC federation, scoped
   access assignments and the retained development resource group.
-- `scripts/configure-github.sh`: writes non-secret environment configuration
-  from Terraform outputs to the existing development infrastructure repo.
+- `scripts/configure-github.sh`: writes Azure ID environment secrets and backend
+  environment variables from Terraform outputs to the existing development infrastructure repo.
 - CI: format, shell checks, provider validation and mocked Terraform plans.
 
 No application, database, private endpoint, gateway or dedicated compute is
@@ -115,10 +115,22 @@ reverting code and planning/applying against the current state.
 ## Configure and verify development
 
 The GitHub helper creates the `development` environment if absent, restricts a
-new environment to `main` and sets the six variables consumed by D/1 and D/2
-from Terraform outputs. It preserves existing protection rules and stops for
+new environment to `main` and reads the six configuration values consumed by
+D/1 and D/2 from Terraform outputs. It stores `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`
+and `AZURE_SUBSCRIPTION_ID` as environment secrets, and the three `TFSTATE_*`
+settings as environment variables. This preserves the user's preference to hide
+Azure identifiers in public workflow logs; authentication remains passwordless
+OIDC, without a client secret. It preserves existing protection rules and stops for
 conflicting branch policies. No required-reviewer gate is added. It requires
 repository administration access.
+
+For browser setup, open Infrastructure Settings > Environments > development.
+Add the three Azure IDs under **Environment secrets** and the three backend
+settings under **Environment variables**, one name/value at a time. Copy raw
+values from `terraform output -json development_github_variables`; do not paste
+the whole JSON. The output name is retained for compatibility and contains both
+categories. Remove any old Azure ID variables if you previously configured them
+there. This helper adds secrets but does not delete existing variables.
 
 OIDC subject:
 `repo:MichalBoczula/ECommerceStore.Infrastructure:environment:development`.
