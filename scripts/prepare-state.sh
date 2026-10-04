@@ -4,13 +4,18 @@ set -euo pipefail
 umask 077
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 command -v az >/dev/null
+# Git Bash must pass Azure ARM scopes unchanged to Windows executables.
+export MSYS_NO_PATHCONV=1
 export ECOM_STATE_SUBSCRIPTION ECOM_STATE_ACCOUNT
-ECOM_STATE_SUBSCRIPTION=${ECOM_STATE_SUBSCRIPTION:-$(az account show --query id --output tsv)}
-ECOM_STATE_ACCOUNT=${ECOM_STATE_ACCOUNT:-$(python3 -c 'import hashlib, os; print("stecomtf" + hashlib.sha256(os.environ["ECOM_STATE_SUBSCRIPTION"].encode()).hexdigest()[:14])')}
+ECOM_STATE_SUBSCRIPTION=${ECOM_STATE_SUBSCRIPTION:-$(az account show --query id --output tsv | tr -d '\r')}
+ECOM_STATE_SUBSCRIPTION=${ECOM_STATE_SUBSCRIPTION%$'\r'}
+ECOM_STATE_ACCOUNT=${ECOM_STATE_ACCOUNT:-$(python3 -c 'import hashlib, os; print("stecomtf" + hashlib.sha256(os.environ["ECOM_STATE_SUBSCRIPTION"].encode()).hexdigest()[:14])' | tr -d '\r')}
+ECOM_STATE_ACCOUNT=${ECOM_STATE_ACCOUNT%$'\r'}
 export ECOM_STATE_GROUP=${ECOM_STATE_GROUP:-rg-ecommerce-terraform-state}
 export ECOM_STATE_LOCATION=${ECOM_STATE_LOCATION:-northeurope}
 python3 - <<'PY'
 import os, re
+assert re.fullmatch(r'[0-9a-fA-F]{8}-(?:[0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}', os.environ['ECOM_STATE_SUBSCRIPTION']), 'Invalid subscription ID.'
 assert re.fullmatch(r'[a-z0-9]{3,24}', os.environ['ECOM_STATE_ACCOUNT']), 'Invalid account name.'
 assert re.fullmatch(r'[a-zA-Z0-9_.()-]{1,90}', os.environ['ECOM_STATE_GROUP']), 'Invalid resource group.'
 assert os.environ['ECOM_STATE_GROUP'].lower() not in ('rg-ecommerce-dev','rg-ecommerce-bootstrap')
@@ -51,10 +56,10 @@ assert account['enableHttpsTrafficOnly'] and account['minimumTlsVersion'] == 'TL
 assert account.get('allowSharedKeyAccess') is False and account.get('allowBlobPublicAccess') is False
 assert account.get('publicNetworkAccess') == 'Enabled', 'Hosted runners require authenticated public access in this MVP.'
 PY
-operator_id=$(az ad signed-in-user show --query id --output tsv)
+operator_id=$(az ad signed-in-user show --query id --output tsv | tr -d '\r')
 account_scope="/subscriptions/$ECOM_STATE_SUBSCRIPTION/resourceGroups/$ECOM_STATE_GROUP/providers/Microsoft.Storage/storageAccounts/$ECOM_STATE_ACCOUNT"
 role_count=$(az role assignment list --scope "$account_scope" \
-  --query "length([?principalId=='$operator_id' && ends_with(roleDefinitionId, '/ba92f5b4-2d11-453d-a403-e96b0029c9fe')])" --output tsv)
+  --query "length([?principalId=='$operator_id' && ends_with(roleDefinitionId, '/ba92f5b4-2d11-453d-a403-e96b0029c9fe')])" --output tsv | tr -d '\r')
 if [[ $role_count == 0 ]]; then
   az role assignment create --assignee-object-id "$operator_id" --assignee-principal-type User \
     --role 'Storage Blob Data Contributor' --scope "$account_scope" --output none

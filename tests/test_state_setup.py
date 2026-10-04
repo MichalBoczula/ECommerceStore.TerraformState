@@ -1,8 +1,10 @@
+import hashlib
 import json
 import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -11,16 +13,20 @@ FAKE_AZ = r'''#!/usr/bin/env python3
 import json, os, sys
 args=sys.argv[1:]
 with open(os.environ['AZ_CALLS'],'a') as f: f.write(json.dumps(args)+'\n')
-if args[:3] == ['storage','account','show']:
+def scalar(value):
+    print(value, end='\r\n' if os.environ.get('WINDOWS_OUTPUT') else '\n')
+if args[:2] == ['account','show']:
+    scalar('33333333-3333-3333-3333-333333333333')
+elif args[:3] == ['storage','account','show']:
     if '--output' in args and args[args.index('--output')+1]=='none':
         sys.exit(0 if os.environ.get('ACCOUNT_EXISTS','1')=='1' else 1)
     print(json.dumps({'kind':'StorageV2','sku':{'name':'Standard_LRS'},
         'enableHttpsTrafficOnly':True,'minimumTlsVersion':'TLS1_2',
         'allowSharedKeyAccess':False,'allowBlobPublicAccess':False,'publicNetworkAccess':'Enabled'}))
 elif args[:3] == ['ad','signed-in-user','show']:
-    print('44444444-4444-4444-4444-444444444444')
+    scalar('44444444-4444-4444-4444-444444444444')
 elif args[:3] == ['role','assignment','list']:
-    print('1')
+    scalar(os.environ.get('ROLE_COUNT','1'))
 elif args[:3] == ['storage','container','create'] and os.environ.get('FAIL_CONTAINER'):
     sys.exit(1)
 '''
@@ -81,3 +87,28 @@ class ExternalStateSetupTests(unittest.TestCase):
         self.assertNotEqual(result.returncode,0)
         self.assertFalse((self.root/'backend.hcl').exists())
         self.assertNotIn('Independent state store ready',result.stdout)
+
+    def test_windows_cli_and_python_output_are_normalized(self):
+        self.env['WINDOWS_OUTPUT']='1'
+        self.env['ROLE_COUNT']='0'
+        self.env.pop('ECOM_STATE_SUBSCRIPTION')
+        self.env.pop('ECOM_STATE_ACCOUNT')
+        # Simulate Windows Python stdout as well as Azure CLI stdout.
+        tool=self.root/'bin'/'python3'
+        tool.write_text('#!'+sys.executable+'\n'
+            'import subprocess, sys\n'
+            'result=subprocess.run([sys.executable,*sys.argv[1:]],stdout=subprocess.PIPE)\n'
+            'sys.stdout.buffer.write(result.stdout.replace(b"\\r\\n",b"\\n").replace(b"\\n",b"\\r\\n"))\n'
+            'sys.exit(result.returncode)\n')
+        tool.chmod(0o700)
+        result=self.run_script()
+        self.assertEqual(result.returncode,0,result.stderr)
+        values=json.loads((self.root/'bootstrap.auto.tfvars.json').read_text())
+        subscription='33333333-3333-3333-3333-333333333333'
+        self.assertEqual(values['subscription_id'],subscription)
+        self.assertEqual(values['state_storage_account_name'],
+            'stecomtf'+hashlib.sha256(subscription.encode()).hexdigest()[:14])
+        self.assertTrue(all('\r' not in value for call in self.calls() for value in call))
+        assignment=next(c for c in self.calls() if c[:3]==['role','assignment','create'])
+        self.assertEqual(assignment[assignment.index('--assignee-object-id')+1],
+            '44444444-4444-4444-4444-444444444444')

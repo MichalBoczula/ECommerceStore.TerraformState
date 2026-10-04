@@ -23,6 +23,7 @@ with open(sys.argv[1]) as f: p = json.load(f).get('deployment_branch_policy')
 print('custom' if p and p.get('custom_branch_policies') else ('protected' if p and p.get('protected_branches') else 'none'))
 PY
 )
+policy=${policy%$'\r'}
 if [[ $policy == none ]]; then
   echo 'Existing environment has no branch policy. Set selected deployment branches to main in GitHub Settings, preserving its other protection rules, then rerun.' >&2
   exit 1
@@ -55,9 +56,9 @@ python3 - "$temp_dir/variables.json" "$temp_dir/variables.tsv" <<'PY'
 import json, sys
 with open(sys.argv[1]) as f: values = json.load(f)
 assert set(values) == {'AZURE_CLIENT_ID', 'AZURE_TENANT_ID', 'AZURE_SUBSCRIPTION_ID', 'TFSTATE_RESOURCE_GROUP', 'TFSTATE_STORAGE_ACCOUNT', 'TFSTATE_CONTAINER'}
-with open(sys.argv[2], 'w') as f:
+with open(sys.argv[2], 'w', newline='\n') as f:
     for name, value in values.items():
-        assert '\n' not in value and '\t' not in value
+        assert '\n' not in value and '\r' not in value and '\t' not in value
         f.write(name + '\t' + value + '\n')
 PY
 while IFS=$'\t' read -r name value; do
